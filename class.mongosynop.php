@@ -6,20 +6,25 @@ class SynopImporter {
      * @var Mongo
      */
     protected $mongoConnection;
+    
+    protected $dbName = "Your_Database_Name";
+    
+    protected $colName = "synop_collection";
 
     protected $time;
     /**
      * @var array
+     * specify the weather station to extract
      */
     public $use = array("06102", "06120", "06123", "06118", "06154", "06104", "06135", "06110");
     /**
      * @var array
      */
-    public $bitIds = array("first", "vind", "temperature", "dugpunkt", "stationstryk", "havtryk", "trykændring");
+    public $bitIds = array("first", "wind", "temperature", "dewpoint", "station pressure", "sealevel pressure", "pressure change");
     /**
      * @var array
      */
-    public $retninger = array("n", "nø", "nø", "ø", "ø", "sø", "sø", "s", "s", "sv", "sv", "v", "v", "nv", "nv", "n"
+    public $directions = array("n", "ne", "ne", "e", "e", "se", "se", "s", "s", "sw", "sw", "w", "w", "nw", "nw", "n"
     );
 
     public $dmiCollection;
@@ -29,8 +34,8 @@ class SynopImporter {
      */
     function __construct() {
         $mongoConnection = new Mongo();
-        $this->dmiCollection = $mongoConnection->seih->dmi;
-        $this->dmiCollection->ensureIndex(array('date' => 1));
+        $this->synopCollection = $mongoConnection->selectDB($dbName)->selectCollecction($colName);;
+        $this->synopCollection->ensureIndex(array('date' => 1));
 
     }
 
@@ -38,7 +43,7 @@ class SynopImporter {
      * @param $directory⁄
      * @return boolean
      */
-    public function importFromDirectory($directory = "/home/sites/seih/htdocs/data/passiv/2013*/DMI/") {
+    public function importFromDirectory($directory = "./") {
         print "Importing from directory: " . $directory . PHP_EOL;
         foreach ($this->rglob($directory . '*.DAT') as $file) {
             try {
@@ -134,18 +139,18 @@ class SynopImporter {
                 $dp = (int)(substr($bits[3], 2, 3)) / 10;
             }
 
-            $json['cc'] = (int)($bits[0][1] == "/" ? "n/a" : (int)$bits[0][0]); // skydække
-            $json['wd'] = $this->retninger[ceil((substr($bits[1], 1, 2) * 10) / 22.5)]; // vindretning
-            $json['ws'] = (int)((int)substr($bits[1], 3, 2)); // vindhastighed
+            $json['cc'] = (int)($bits[0][1] == "/" ? "n/a" : (int)$bits[0][0]); // cloud cover
+            $json['wd'] = $this->directions[ceil((substr($bits[1], 1, 2) * 10) / 22.5)]; // wind direction
+            $json['ws'] = (int)((int)substr($bits[1], 3, 2)); // wind speed
             $json['tp'] = $bits[2][1] == "1" ? "-" : "+"; //temp minus or plus
             $json['te'] = (int)(substr($bits[2], 2, 3)); //temp
             $json['dp'] = (string)$dp; //dugpunkt
-            $json['sp'] = (string)(substr($bits[4], 1, 4) / 10); //stationstryk
-            $json['op'] = (string)(substr($bits[5], 1, 4) / 10); //havtryk
-            $json['pc'] = (string)(substr($bits[6], 2, 3) / 10); //trykændring
+            $json['sp'] = (string)(substr($bits[4], 1, 4) / 10); //station pressure
+            $json['op'] = (string)(substr($bits[5], 1, 4) / 10); //sea level pressure
+            $json['pc'] = (string)(substr($bits[6], 2, 3) / 10); //pressure change
         }
         $indexData = $json;
-        $update = $this->dmiCollection->update($indexData, $json, array('upsert' => TRUE, 'w' => TRUE));
+        $update = $this->synopCollection->update($indexData, $json, array('upsert' => TRUE, 'w' => TRUE));
         return $update['ok'];
     }
 
