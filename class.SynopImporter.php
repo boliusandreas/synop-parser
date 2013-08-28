@@ -1,5 +1,4 @@
 <?php
-error_reporting(E_ERROR | E_WARNING | E_PARSE);
 class SynopImporter {
 
     /**
@@ -119,8 +118,6 @@ class SynopImporter {
         array_splice($bits, 0, 1);
         array_pop($bits);
         unset($json);
-        unset($exists);
-        $exists = null;
         $unit = null;
 
         // build insert values
